@@ -1,11 +1,29 @@
 from __future__ import with_statement
+from __future__ import print_function
 
 import os
 import sys
 import errno
 
 from fuse import FUSE, FuseOSError, Operations
+from googleapiclient.discovery import build, MediaFileUpload
+from googleapiclient.http import    MediaIoBaseDownload
+from httplib2 import Http
+from oauth2client import file, client, tools
+import io
 
+SCOPES = 'https://www.googleapis.com/auth/drive'
+g_root = "/home/tarun/gdrive/"
+g_mountpoint = "/home/tarun/gdrive_mount"
+
+def auth():
+    store = file.Storage('token.json')
+    creds = store.get()
+    if not creds or creds.invalid:
+        flow = client.flow_from_clientsecrets('credentials.json', SCOPES)
+        creds = tools.run_flow(flow, store)
+    service = build('drive', 'v3', http=creds.authorize(Http()))
+    return service
 
 class Passthrough(Operations):
     def __init__(self, root):
@@ -23,8 +41,21 @@ class Passthrough(Operations):
     # ==================
 
     def access(self, path, mode):
+
         full_path = self._full_path(path)
-        print("access")
+        print(full_path)
+        if full_path == g_root:
+            print("Equal")
+            service = auth()
+            results = service.files().list(q="'root' in parents and trashed=false").execute()
+            items = results.get('files', [])
+            print("items fetched")
+            for item  in items:
+                if item["mimeType"] == "application/vnd.google-apps.folder":
+                    if not os.path.exists(full_path + "/" + item["name"]):
+                        os.mkdir(full_path + "/" + item["name"])
+                        print("created")
+
         if not os.access(full_path, mode):
             raise FuseOSError(errno.EACCES)
 
@@ -95,6 +126,8 @@ class Passthrough(Operations):
 
     def rename(self, old, new):
         print("rename")
+        print(old)
+        print(new)
         return os.rename(self._full_path(old), self._full_path(new))
 
     def link(self, target, name):
@@ -116,6 +149,7 @@ class Passthrough(Operations):
     def create(self, path, mode, fi=None):
         print("create")
         full_path = self._full_path(path)
+        print(full_path)
         return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
 
     def read(self, path, length, offset, fh):
@@ -146,9 +180,5 @@ class Passthrough(Operations):
         print("fsync")
         return self.flush(path, fh)
 
-
-def main(mountpoint, root):
-    FUSE(Passthrough(root), mountpoint, nothreads=True, foreground=True)
-
 if __name__ == '__main__':
-    main(sys.argv[2], sys.argv[1])
+    FUSE(Passthrough(g_root), g_mountpoint, nothreads=True, foreground=True)

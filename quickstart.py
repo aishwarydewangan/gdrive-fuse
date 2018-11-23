@@ -27,7 +27,7 @@ def list_folder(folder_id):
         print('No files found.')
     else:
         for item in items:
-            print("{0}\tID: {1}".format(item['name'], item['id']))
+            print("{0}\tID: {1}".format(item['name'], item["mimeType"]))
 
 def create_folder(folder_name, parent_id=None):
     service = auth()
@@ -106,6 +106,8 @@ if __name__ == '__main__':
 
     #upload('anime.py', 'anime.py', '1d_RGV3PC5748ZB00RMgBkEIBgqRW40n6')
 
-    download('1Y9fNp_b16MOen65B4mNmB4LcGH9OKBCf', 'pintos.pdf')
+    #download('1Y9fNp_b16MOen65B4mNmB4LcGH9OKBCf', 'pintos.pdf')
+
+    # copy('1SosxktyfavtdSn1JqG-fhK8Pq6ErfPaD', '1Pa8dcbM9XQmtYfj3a2z8igPvAfAuxRZL')
 
     list_folder('root')
