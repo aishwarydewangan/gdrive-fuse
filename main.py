@@ -4,26 +4,10 @@ from __future__ import print_function
 import os
 import sys
 import errno
-
 from fuse import FUSE, FuseOSError, Operations
-from googleapiclient.discovery import build, MediaFileUpload
-from googleapiclient.http import    MediaIoBaseDownload
-from httplib2 import Http
-from oauth2client import file, client, tools
-import io
 
-SCOPES = 'https://www.googleapis.com/auth/drive'
-g_root = "/home/tarun/gdrive/"
-g_mountpoint = "/home/tarun/gdrive_mount"
-
-def auth():
-    store = file.Storage('token.json')
-    creds = store.get()
-    if not creds or creds.invalid:
-        flow = client.flow_from_clientsecrets('credentials.json', SCOPES)
-        creds = tools.run_flow(flow, store)
-    service = build('drive', 'v3', http=creds.authorize(Http()))
-    return service
+g_root = "/home/tarun/gdrive"
+g_mount = "/home/tarun/gmount"
 
 class Passthrough(Operations):
     def __init__(self, root):
@@ -41,20 +25,7 @@ class Passthrough(Operations):
     # ==================
 
     def access(self, path, mode):
-
         full_path = self._full_path(path)
-        print(full_path)
-        if full_path == g_root:
-            print("Equal")
-            service = auth()
-            results = service.files().list(q="'root' in parents and trashed=false").execute()
-            items = results.get('files', [])
-            print("items fetched")
-            for item  in items:
-                if item["mimeType"] == "application/vnd.google-apps.folder":
-                    if not os.path.exists(full_path + "/" + item["name"]):
-                        os.mkdir(full_path + "/" + item["name"])
-                        print("created")
 
         if not os.access(full_path, mode):
             raise FuseOSError(errno.EACCES)
@@ -79,7 +50,6 @@ class Passthrough(Operations):
     def readdir(self, path, fh):
         print("readdir")
         full_path = self._full_path(path)
-
         dirents = ['.', '..']
         if os.path.isdir(full_path):
             dirents.extend(os.listdir(full_path))
@@ -180,5 +150,16 @@ class Passthrough(Operations):
         print("fsync")
         return self.flush(path, fh)
 
+
 if __name__ == '__main__':
-    FUSE(Passthrough(g_root), g_mountpoint, nothreads=True, foreground=True)
+
+    os.system('clear')
+
+    if not os.path.isdir(g_root):
+        os.mkdir(g_root)
+
+    if not os.path.isdir(g_mount):
+        os.mkdir(g_mount)
+
+    FUSE(Passthrough(g_root), g_mount, nothreads=True, foreground=False)
+    
